@@ -1,0 +1,24 @@
+version: '3.9'
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: stockchat_sql
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "OuHiDnGB3A4P8Vj"
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+
+  webapi:
+    container_name: stockchat_webapi
+    build:
+      context: .
+      dockerfile: StockChat.API/Dockerfile
+    environment:
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=StockChat;User Id=sa;Password=OuHiDnGB3A4P8Vj;TrustServerCertificate=True;"
+      ASPNETCORE_ENVIRONMENT: "Development"
+    depends_on:
+      - sqlserver
+    ports:
+      - "8080:8080"
