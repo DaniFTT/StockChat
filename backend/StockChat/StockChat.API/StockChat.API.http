@@ -1,6 +1,6 @@
-@StockChat.API_HostAddress = http://localhost:5080
+@StockChat.API_HostAddress = https://localhost:8081
 
-GET {{StockChat.API_HostAddress}}/weatherforecast/
+GET {{StockChat.API_HostAddress}}
 Accept: application/json
 
 ###
