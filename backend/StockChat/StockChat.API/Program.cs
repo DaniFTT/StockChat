@@ -6,7 +6,8 @@ namespace StockChat.API
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            builder.Services.AddControllers();
+            builder.Services.AddSignalR();
             builder.Services.AddScoped<IChatRepository, ChatRepository>();
             builder.Services.AddScoped<IChatMessageRepository, ChatMessageRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -24,6 +25,7 @@ namespace StockChat.API
 
 
             app.MapControllers();
+            app.MapHub<ChatHub>("/chat");
 
             app.Run();
         }
