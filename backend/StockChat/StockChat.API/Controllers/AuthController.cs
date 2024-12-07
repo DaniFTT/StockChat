@@ -1,20 +1,19 @@
-﻿using Microsoft.AspNetCore.Identity.Data;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using StockChat.Domain.Contracts.Services;
 using StockChat.Domain.Entities;
 
 namespace StockChat.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
-public class AuthenticationController : ControllerBase
+[Route("api/auth")]
+public class AuthController : ControllerBase
 {
     public record LoginRequest(string Email, string Password);
     public record RegisterRequest(string Email, string Password, string FullName);
 
-    private readonly IAuthenticationService _authService;
+    private readonly IAuthService _authService;
 
-    public AuthenticationController(IAuthenticationService authService)
+    public AuthController(IAuthService authService)
     {
         _authService = authService;
     }
@@ -39,13 +38,22 @@ public class AuthenticationController : ControllerBase
             FullName = request.FullName,
         };
 
-
         var result = await _authService.RegisterAsync(user, request.Password);
 
         if (!result.IsSuccess)
             return BadRequest(result.Errors);
         
         return NoContent();
+    }
+
+    [HttpGet("current-user")]
+    public async Task<IActionResult> GetCurrentUser()
+    {
+        var result = await _authService.GetCurrentUser();
+        if (!result.IsSuccess)
+            return Unauthorized(result.Errors);
+
+        return Ok(result.Value);
     }
 
     [HttpPost("logout")]

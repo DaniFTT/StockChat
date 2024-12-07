@@ -42,7 +42,7 @@ namespace StockChat.API
             builder.Services.AddScoped<IChatMessageRepository, ChatMessageRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
 
-            builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+            builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IChatService, ChatService>();
 
             builder.Services.AddCors(options =>
