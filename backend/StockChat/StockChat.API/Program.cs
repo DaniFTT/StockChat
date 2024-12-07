@@ -33,9 +33,14 @@ namespace StockChat.API
 
             builder.Services.ConfigureApplicationCookie(options =>
             {
-                options.Cookie.HttpOnly = true;
+                options.Cookie.HttpOnly = true; 
                 options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-                options.Cookie.SameSite = SameSiteMode.Strict;
+                options.Cookie.SameSite = SameSiteMode.None;
+                options.Cookie.Name = "StockChatCookie";
+                options.LoginPath = "/api/auth/login"; 
+                options.LogoutPath = "/api/auth/logout";
+                options.SlidingExpiration = true;
+                options.ExpireTimeSpan = TimeSpan.FromDays(7); 
             });
 
             builder.Services.AddScoped<IChatRepository, ChatRepository>();
@@ -56,7 +61,11 @@ namespace StockChat.API
                 });
             });
 
+            builder.Services.AddHttpContextAccessor();
+
             var app = builder.Build();
+
+            app.UseCors("AllowAll");
 
             using (var scope = app.Services.CreateScope())
             {
@@ -71,7 +80,6 @@ namespace StockChat.API
             app.MapControllers();
             app.MapHub<ChatHub>("/chat");
 
-            app.UseCors("AllowAll");
 
             app.Run();
         }

@@ -2,6 +2,7 @@
 using StockChat.Domain.Contracts.Repositories;
 using StockChat.Domain.Contracts.Services;
 using StockChat.Domain.Entities;
+using StockChat.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,11 +23,12 @@ public class ChatService : IChatService
         _chatMessageRepository = chatMessageRepository;
     }
 
-    public async Task<Result<Chat>> CreateChatAsync(string chatName)
+    public async Task<Result<Chat>> CreateChatAsync(string chatName, string createdBy)
     {
         var chat = new Chat
         {
-            ChatName = chatName, 
+            ChatName = chatName,
+            CreatedBy = createdBy
         };
 
         await _chatRepository.AddAsync(chat);
@@ -40,7 +42,7 @@ public class ChatService : IChatService
         return Result.Success(chats);
     }
 
-    public async Task<Result<ChatMessage>> AddMessageAsync(Guid chatId, Guid userId, string messageText)
+    public async Task<Result<ChatMessage>> AddMessageAsync(Guid chatId, Guid userId, string messageText, UserType userType = UserType.AppUser)
     {
         var chat = await _chatRepository.GetByIdAsync(chatId);
         if (chat is null)
@@ -50,7 +52,8 @@ public class ChatService : IChatService
         {
             ChatId = chat.Id,
             UserId = userId,
-            Text = messageText
+            Text = messageText,
+            UserType = userType
         };
 
         await _chatMessageRepository.AddAsync(message);

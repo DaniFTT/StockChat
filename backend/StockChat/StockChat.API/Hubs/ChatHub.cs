@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using StockChat.Domain.Contracts.Services;
+using StockChat.Domain.Entities;
 using StockChat.Domain.Enums;
+using System.Security.Claims;
 
 namespace StockChat.API.Hubs;
 
@@ -9,19 +11,20 @@ namespace StockChat.API.Hubs;
 public class ChatHub : Hub
 {
     private readonly IChatService _chatService;
+    private readonly IAuthService _authService;
 
-    public ChatHub(IChatService chatService)
+    public ChatHub(IChatService chatService, IAuthService authService)
     {
         _chatService = chatService;
+        _authService = authService;
     }
 
     public async Task CreateChat(string chatName)
     {
         var userId = Guid.Parse(Context.UserIdentifier!);
-        var userName = Context.User?.Identity?.Name ?? "Unreconized user";
+        var userEmail = Context.User?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value ?? "Unrecognized user";
 
-        var createChatResult = await _chatService.CreateChatAsync(chatName);
-
+        var createChatResult = await _chatService.CreateChatAsync(chatName, userEmail);
         if (!createChatResult.IsSuccess)
         {
             await Clients.Caller.SendAsync(HubMessageType.Notification.ToString(), createChatResult.Errors.First());
@@ -31,29 +34,35 @@ public class ChatHub : Hub
         var chatId = createChatResult.Value.Id;
         await Groups.AddToGroupAsync(Context.ConnectionId, chatId.ToString());
 
+        var userResult = await _authService.GetCurrentUser();
+
+        var message = $"{userResult.Value.FullName} created the chat '{chatName}'.";
+        var addMessageResult = await _chatService.AddMessageAsync(chatId, userId, message, UserType.Admin);
+        if (!addMessageResult.IsSuccess)
+        {
+            await Clients.Caller.SendAsync(HubMessageType.Notification.ToString(), addMessageResult.Errors.First());
+            return;
+        }
+
+        await Clients.All.SendAsync(HubMessageType.NewChat.ToString(), createChatResult.Value);
+
         await Clients.Group(chatId.ToString())
             .SendAsync(HubMessageType.NewMessage.ToString(),
                        UserType.Admin,
-                       $"{userName} created the chat '{chatName}'.");
-
-        await Clients.All.SendAsync(HubMessageType.NewChat.ToString(), createChatResult.Value);
+                       userId,
+                       message,
+                       addMessageResult.Value.CreatedAt);
     }
 
     public async Task JoinChat(Guid chatId)
     {
-        var userId = Guid.Parse(Context.UserIdentifier!);
-
         await Groups.AddToGroupAsync(Context.ConnectionId, chatId.ToString());
-
-        await Clients.Group(chatId.ToString())
-             .SendAsync(HubMessageType.Notification.ToString(),
-                        UserType.Admin,
-                        $"{userId} joined the chat.");
     }
 
     public async Task SendMessage(Guid chatId, string messageText)
     {
         var userId = Guid.Parse(Context.UserIdentifier!);
+        var userResult = await _authService.GetCurrentUser();
 
         var addMessageResult = await _chatService.AddMessageAsync(chatId, userId, messageText);
         if(!addMessageResult.IsSuccess)
@@ -65,7 +74,7 @@ public class ChatHub : Hub
         await Clients.Group(chatId.ToString())
              .SendAsync(HubMessageType.NewMessage.ToString(),
                         UserType.AppUser,
-                        addMessageResult.Value.UserId,
+                        userResult.Value.FullName,
                         addMessageResult.Value.Text,
                         addMessageResult.Value.CreatedAt);
     }
@@ -74,7 +83,7 @@ public class ChatHub : Hub
     {
         var lastMessages = await _chatService.GetLastMessagesAsync(chatId, 50);
 
-        await Clients.Caller.SendAsync(HubMessageType.GetLastMessages.ToString(), lastMessages);
+        await Clients.Caller.SendAsync(HubMessageType.GetLastMessages.ToString(), lastMessages.Value);
     }
 }
 

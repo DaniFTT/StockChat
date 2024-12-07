@@ -18,8 +18,9 @@ public class ChatMessageRepository : BaseRepository<ChatMessage>, IChatMessageRe
     public async Task<IEnumerable<ChatMessage>> GetLastMessagesAsync(Guid chatId, int count)
     {
         return await _dbSet
+            .Include(u => u.User)
             .Where(m => m.ChatId == chatId)
-            .OrderByDescending(m => m.CreatedAt)
+            .OrderBy(m => m.CreatedAt)
             .Take(count)
             .ToListAsync();
     }

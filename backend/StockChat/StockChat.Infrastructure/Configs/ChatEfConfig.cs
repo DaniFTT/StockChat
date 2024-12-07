@@ -16,6 +16,7 @@ internal class ChatEfConfig : IEntityTypeConfiguration<Chat>
         builder.HasKey(c => c.Id);
 
         builder.Property(c => c.ChatName).HasMaxLength(150);
+        builder.Property(c => c.CreatedBy).HasMaxLength(150);
     }
 }
 

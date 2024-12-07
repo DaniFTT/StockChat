@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using StockChat.Domain.Enums;
 
 #nullable disable
 
@@ -57,6 +58,7 @@ namespace StockChat.Infrastructure.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ChatName = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     LastUpdateAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
                 },
@@ -179,6 +181,7 @@ namespace StockChat.Infrastructure.Migrations
                     ChatId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Text = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: false),
+                    UserType = table.Column<int>(type: "int", nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     LastUpdateAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
                 },

@@ -1,4 +1,5 @@
 ﻿using StockChat.Domain.Abstractions;
+using StockChat.Domain.Enums;
 
 namespace StockChat.Domain.Entities;
 
@@ -11,5 +12,6 @@ public class ChatMessage : BaseEntity
     public User? User { get; set; }
 
     public string Text { get; set; } = string.Empty;
+    public UserType UserType { get; set; }
 }
 
