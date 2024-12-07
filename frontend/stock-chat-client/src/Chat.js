@@ -1,10 +1,118 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Button, List, ListItem, ListItemText, Typography, Divider } from '@mui/material';
+﻿import React, { useState, useEffect } from 'react';
+import {
+    Box,
+    Button,
+    List,
+    ListItem,
+    ListItemText,
+    Typography,
+    Divider,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    TextField,
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { HubConnectionBuilder } from '@microsoft/signalr';
 
-const Chat = ({ userName }) => {
+const Chat = ({ user, onLogout }) => {
     const [chats, setChats] = useState([]);
+    const [newChatName, setNewChatName] = useState('');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [connection, setConnection] = useState(null);
+    const [selectedChat, setSelectedChat] = useState(null);
+
+    const [messageText, setMessageText] = useState('');
+    const [messages, setMessages] = useState([]);
+
     const navigate = useNavigate();
+
+    const handleSendMessage = async () => {
+        if (!messageText.trim() || !selectedChat || !connection) return;
+
+        try {
+            await connection.invoke('SendMessage', selectedChat.id, messageText);
+            setMessageText('');
+        } catch (err) {
+            console.error('Error sending message:', err);
+        }
+    };
+
+    useEffect(() => {
+        const connectToHub = async () => {
+            if (connection) return;
+
+            const newConnection = new HubConnectionBuilder()
+                .withUrl('https://localhost:8081/chat', { withCredentials: true })
+                .withAutomaticReconnect()
+                .build();
+
+            try {
+                await newConnection.start();
+                console.log('Connected to SignalR Hub');
+
+                newConnection.on('NewChat', (chat) => {
+                    setChats((prevChats) => {
+                        const chatExists = prevChats.some((c) => c.id === chat.id);
+                        if (!chatExists) {
+                            return [...prevChats, chat];
+                        }
+                        return prevChats;
+                    });
+
+                    if (chat.createdBy === user.email) {
+                        setSelectedChat(chat);
+                    }
+                });
+
+                newConnection.on('Notification', (message) => {
+                    console.log('Notification:', message);
+                });
+
+                setConnection(newConnection);
+            } catch (error) {
+                console.error('Error connecting to SignalR Hub:', error);
+            }
+        };
+
+        connectToHub();
+
+        return () => {
+            if (connection) {
+                connection.stop();
+            }
+        };
+    }, [connection, user.email]);
+
+    useEffect(() => {
+        if (!connection || !selectedChat) return;
+
+        const handleNewMessage = (userType, userName, text, createdAt) => {
+            console.log('NewMessage received:', { userType, userName, text, createdAt });
+            setMessages((prevMessages) => [
+                ...prevMessages,
+                { userType, user: { fullName: userName }, text, createdAt },
+            ]);
+        };
+
+        const handleGetLastMessages = (lastMessages) => {
+            console.log('LastMessages received:', lastMessages);
+            setMessages(lastMessages);
+        };
+
+        connection.on('NewMessage', handleNewMessage);
+        connection.on('GetLastMessages', handleGetLastMessages);
+
+        connection
+            .invoke('GetLastMessages', selectedChat.id)
+            .catch((err) => console.error('Error fetching messages:', err));
+
+        return () => {
+            connection.off('NewMessage', handleNewMessage);
+            connection.off('GetLastMessages', handleGetLastMessages);
+        };
+    }, [connection, selectedChat]);
 
     useEffect(() => {
         const fetchChats = async () => {
@@ -36,7 +144,8 @@ const Chat = ({ userName }) => {
             });
 
             if (response.status === 204) {
-                navigate('/login');
+                onLogout();
+                navigate('/');
             } else {
                 console.error('Logout failed');
             }
@@ -45,8 +154,41 @@ const Chat = ({ userName }) => {
         }
     };
 
+    const handleAddChat = () => {
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setNewChatName('');
+    };
+
+    const handleCreateChat = async () => {
+        if (!newChatName || !connection) return;
+
+        try {
+            await connection.invoke('CreateChat', newChatName);
+            handleCloseModal();
+        } catch (err) {
+            console.error('Error creating chat:', err);
+        }
+    };
+
+    const handleChatClick = async (chat) => {
+        setSelectedChat(chat);
+        setMessages([]);
+        if (connection) {
+            try {
+                await connection.invoke('JoinChat', chat.id);
+                await connection.invoke('GetLastMessages', chat.id);
+            } catch (err) {
+                console.error('Error joining or fetching messages:', err);
+            }
+        }
+    };
+
     return (
-        <Box sx={{ display: 'flex', height: '100vh' }}>
+        <Box sx={{ display: 'flex'}}>
             <Box
                 sx={{
                     width: 300,
@@ -59,7 +201,7 @@ const Chat = ({ userName }) => {
                 }}
             >
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                    Ol�, {userName}
+                    Hello, {user.fullName}
                 </Typography>
 
                 <Button variant="contained" color="error" onClick={handleLogout} sx={{ mb: 4 }}>
@@ -67,22 +209,107 @@ const Chat = ({ userName }) => {
                 </Button>
 
                 <Divider sx={{ width: '100%', mb: 2 }} />
+                <Box
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        width: '100%',
+                        mb: 2,
+                    }}
+                >
+                    <Typography variant="subtitle1">Chats</Typography>
+                    <Button variant="contained" color="primary" onClick={handleAddChat}>
+                        Add Chat
+                    </Button>
+                </Box>
 
-                <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                    Chats
-                </Typography>
-                <List sx={{ width: '100%' }}>
+                {/* Chat List */}
+                <List sx={{ width: '100%', overflowY: 'auto', flexGrow: 1 }}>
                     {chats.map((chat) => (
-                        <ListItem key={chat.id} button>
-                            <ListItemText primary={chat.name} />
+                        <ListItem key={chat.id} button={true} onClick={() => handleChatClick(chat)} selected={selectedChat && chat.id === selectedChat.id}>
+                            <ListItemText primary={chat.chatName} />
                         </ListItem>
                     ))}
                 </List>
             </Box>
 
-            <Box sx={{ flexGrow: 1, p: 4 }}>
-                <Typography variant="h4">Welcome to the Chat Application</Typography>
+            <Box sx={{ flexGrow: 1, p: 4, display: 'flex', flexDirection: 'column', height: '90vh' }}>
+                {selectedChat ? (
+                    <>
+                        {/* Header do Chat */}
+                        <Typography variant="h4" sx={{ mb: 2 }}>Chat: {selectedChat.chatName}</Typography>
+
+                        {/* Área de Mensagens */}
+                        <Box
+                            sx={{
+                                flexGrow: 1,
+                                overflowY: 'auto',
+                                border: '1px solid #ccc',
+                                borderRadius: '8px',
+                                padding: 2,
+                                marginBottom: 2,
+                                height: '70%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                            }}
+                        >
+                            {messages?.map((message, index) => (
+                                <Box key={index} sx={{ mb: 1 }}>
+                                    <Typography variant="body2" color={message.userType === 'Admin' ? 'error' : 'primary'}>
+                                        <strong>{message.userType === 1 ? 'Admin' : `${message.user.fullName}`}</strong>: {message.text}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {message.createdAt}
+                                    </Typography>
+                                </Box>
+                            ))}
+                        </Box>
+
+                        {/* Campo de Entrada */}
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <TextField
+                                fullWidth
+                                label="Type your message"
+                                variant="outlined"
+                                value={messageText}
+                                onChange={(e) => setMessageText(e.target.value)}
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleSendMessage();
+                                        e.preventDefault();
+                                    }
+                                }}
+                            />
+                            <Button variant="contained" color="primary" onClick={handleSendMessage}>
+                                Send
+                            </Button>
+                        </Box>
+                    </>
+                ) : (
+                    <Typography variant="h4">Welcome to the Chat Application</Typography>
+                )}
             </Box>
+
+            {/* Add Chat Dialog */}
+            <Dialog open={isModalOpen} onClose={handleCloseModal}>
+                <DialogTitle>Create New Chat</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        fullWidth
+                        label="Chat Name"
+                        value={newChatName}
+                        onChange={(e) => setNewChatName(e.target.value)}
+                        sx={{ mt: 2 }}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseModal}>Cancel</Button>
+                    <Button variant="contained" color="primary" onClick={handleCreateChat}>
+                        Create
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

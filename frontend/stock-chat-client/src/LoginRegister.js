@@ -27,7 +27,7 @@ export default function LoginRegister({ onLoginSuccess, setErrors }) {
                 body: JSON.stringify({ fullName, email: regEmail, password: regPassword }),
                 credentials: 'include'
             });
-            if (response.status === 204) {
+            if (response.status === 200) {
                 setTab(0);
             } else if (response.status === 400) {
                 const data = await response.json();
@@ -50,8 +50,10 @@ export default function LoginRegister({ onLoginSuccess, setErrors }) {
                 body: JSON.stringify({ email: logEmail, password: logPassword }),
                 credentials: 'include'
             });
-            if (response.status === 204) {
-                onLoginSuccess();
+
+            if (response.status === 200) {
+                const userData = await response.json();
+                onLoginSuccess(userData);
             } else if (response.status === 400) {
                 const data = await response.json();
                 setErrors(data);

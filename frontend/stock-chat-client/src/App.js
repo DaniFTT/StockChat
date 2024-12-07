@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginRegister from './LoginRegister';
 import Chat from './Chat';
 import { Snackbar, Alert } from '@mui/material';
 
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [userName, setUserName] = useState('');
+    const [user, setUser] = useState({});
     const [errors, setErrors] = useState([]);
 
-    const fetchUserName = async () => {
+    const fetchUser = async () => {
         try {
             const response = await fetch('https://localhost:8081/api/auth/current-user', {
                 method: 'GET',
@@ -16,7 +17,7 @@ function App() {
             });
             if (response.ok) {
                 const data = await response.json();
-                setUserName(data.FullName);
+                setUser(data);
                 setIsLoggedIn(true);
             } else {
                 setIsLoggedIn(false);
@@ -28,20 +29,33 @@ function App() {
     };
 
     useEffect(() => {
-        fetchUserName();
+        fetchUser();
     }, []);
 
-    const handleLoginSuccess = () => {
-        fetchUserName();
+    const handleLoginSuccess = (user) => {
+        setUser(user);
+        setIsLoggedIn(true);
+    };
+
+
+    const handleLogout = () => {
+        setIsLoggedIn(false);
     };
 
     return (
-        <>
-            {!isLoggedIn ? (
-                <LoginRegister onLoginSuccess={handleLoginSuccess} setErrors={setErrors} />
-            ) : (
-                <Chat userName={userName} />
-            )}
+        <Router>
+            <Routes>
+                {!isLoggedIn ? (
+                    <Route
+                        path="/"
+                        element={<LoginRegister onLoginSuccess={handleLoginSuccess} setErrors={setErrors} />}
+                    />
+                ) : (
+                        <Route path="/chat" element={<Chat user={user} onLogout={handleLogout} />} />
+                )}
+
+                <Route path="*" element={isLoggedIn ? <Navigate to="/chat" /> : <Navigate to="/" />} />
+            </Routes>
 
             <Snackbar
                 open={errors.length > 0}
@@ -55,7 +69,7 @@ function App() {
                     ))}
                 </Alert>
             </Snackbar>
-        </>
+        </Router>
     );
 }
 
