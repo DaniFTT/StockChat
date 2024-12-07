@@ -33,6 +33,12 @@ public class ChatService : IChatService
 
         return Result.Success(chat);
     }
+    public async Task<Result<IEnumerable<Chat>>> GetAllChatsAsync()
+    {
+        var chats = await _chatRepository.GetAllAsync();
+
+        return Result.Success(chats);
+    }
 
     public async Task<Result<ChatMessage>> AddMessageAsync(Guid chatId, Guid userId, string messageText)
     {
@@ -51,7 +57,6 @@ public class ChatService : IChatService
 
         return message;
     }
-
 
     public async Task<Result<IEnumerable<ChatMessage>>> GetLastMessagesAsync(Guid chatId, int count)
     {
