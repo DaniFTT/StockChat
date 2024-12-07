@@ -22,11 +22,10 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var result = await _authService.LoginAsync(request.Email, request.Password);
-
         if (!result.IsSuccess)
             return BadRequest(result.Errors);
         
-        return NoContent();
+        return Ok(result.Value);
     }
 
     [HttpPost("register")]
@@ -39,11 +38,10 @@ public class AuthController : ControllerBase
         };
 
         var result = await _authService.RegisterAsync(user, request.Password);
-
         if (!result.IsSuccess)
             return BadRequest(result.Errors);
         
-        return NoContent();
+        return Ok(result.Value);
     }
 
     [HttpGet("current-user")]

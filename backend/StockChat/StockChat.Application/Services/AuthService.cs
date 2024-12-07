@@ -30,30 +30,35 @@ public class AuthService : IAuthService
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public async Task<Result<bool>> LoginAsync(string userEmail, string password)
+    public async Task<Result<UserDto>> LoginAsync(string userEmail, string password)
     {
         if (string.IsNullOrWhiteSpace(userEmail) || string.IsNullOrWhiteSpace(password))
             return Result.Error("Email and password are required");
 
-        var user = await _userRepository.GetByEmailAsync(userEmail);
-        if (!user.IsSuccess)
+        var userResult = await _userRepository.GetByEmailAsync(userEmail);
+        if (!userResult.IsSuccess)
             return Result.Error("User not found");
 
         var result = await _signInManager.PasswordSignInAsync(userEmail, password, isPersistent: false, lockoutOnFailure: false);
-
         if (!result.Succeeded)
             return Result.Error("Sorry, your login failed!");
 
-        var cookies = _httpContextAccessor.HttpContext.Response.Headers["Set-Cookie"];
-        foreach (var cookie in cookies)
-        {
-            Console.WriteLine($"Set-Cookie: {cookie}");
-        }
+        var user = userResult.Value!;
 
-        return result.Succeeded;
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, user.FullName), 
+        };
+
+        var identity = new ClaimsIdentity(claims, "ApplicationCookie");
+        var principal = new ClaimsPrincipal(identity);
+
+        await _httpContextAccessor.HttpContext!.SignInAsync(principal);
+
+        return Result.Success(new UserDto(user.Email!, user.FullName));
     }
 
-    public async Task<Result<bool>> RegisterAsync(User user, string password)
+    public async Task<Result<UserDto>> RegisterAsync(User user, string password)
     {
         if (user is null || string.IsNullOrWhiteSpace(user.Email) || string.IsNullOrWhiteSpace(password))
             return Result.Error("Email and password are required");
@@ -66,26 +71,29 @@ public class AuthService : IAuthService
 
         var result = await _userRepository.CreateUserAsync(user, password);
 
-        return result;
+        return Result.Success(new UserDto(user.Email!, user.FullName));
     }
 
     public async Task<Result<UserDto>> GetCurrentUser()
     {
-        var userClaims = _httpContextAccessor.HttpContext?.User?.Claims;
-        if (userClaims == null || !userClaims.Any())
-            return Result.Error("No claims found. User might not be authenticated.");
+        var userId = GetClaimValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Result.Error("User ID not found in claims. Please log in again.");
 
-        var userIdClaim = userClaims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim))
-            return Result.Error("User ID not found in claims. User might not be authenticated.");
-
-        var user = await _userManager.FindByIdAsync(userIdClaim);
+        var user = await _userManager.FindByIdAsync(userId);
         if (user is null)
-            return Result.Error("User not found.");
+            return Result.Error("User not found. The account might have been removed.");
 
-        var userDto = new UserDto(user.Email!, user.FullName);
+        return Result.Success(new UserDto(user.Email!, user.FullName));
+    }
 
-        return Result.Success(userDto);
+    private string? GetClaimValue(string claimType)
+    {
+        var claims = _httpContextAccessor.HttpContext?.User?.Claims;
+        if (claims == null || !claims.Any())
+            return null;
+
+        return claims.FirstOrDefault(c => c.Type == claimType)?.Value;
     }
 
     public async Task LogoutAsync()
