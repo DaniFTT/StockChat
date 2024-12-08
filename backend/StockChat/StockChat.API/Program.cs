@@ -1,11 +1,14 @@
+using MassTransit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using StockChat.API.Hubs;
 using StockChat.Application.Services;
+using StockChat.Bot.Options;
 using StockChat.Domain.Contracts.Repositories;
 using StockChat.Domain.Contracts.Services;
 using StockChat.Domain.Entities;
 using StockChat.Infrastructure.DatabaseContext;
+using StockChat.Infrastructure.MessageQueue;
 using StockChat.Infrastructure.Repositories;
 
 namespace StockChat.API
@@ -62,6 +65,21 @@ namespace StockChat.API
             });
 
             builder.Services.AddHttpContextAccessor();
+
+            var rabbitMqOptions = builder.Configuration.GetSection("RabbitMq").Get<RabbitMqOptions>();
+            builder.Services.AddMassTransit(config =>
+            {
+                config.UsingRabbitMq((ctx, cfg) =>
+                {
+                    cfg.Host(rabbitMqOptions!.Uri, h =>
+                    {
+                        h.Username(rabbitMqOptions.Username);
+                        h.Password(rabbitMqOptions.Password);
+                    });
+                });
+            });
+
+            builder.Services.AddScoped<IMessagePublisher, MessagePublisher>();
 
             var app = builder.Build();
 
