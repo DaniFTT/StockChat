@@ -77,32 +77,7 @@ public class ChatHub : Hub
 
         if (messageText.StartsWith("/stock=", StringComparison.OrdinalIgnoreCase))
         {
-            var stockCode = messageText.Split('=')[1]?.Trim();
-            if (string.IsNullOrEmpty(stockCode))
-            {
-                await Clients.Caller.SendAsync(HubMessageType.Notification.ToString(), NotificationType.Error, "Invalid stock command format. Use /stock=STOCK_CODE.");
-                return;
-            }
-
-            await Clients.Caller.SendAsync(HubMessageType.Notification.ToString(), NotificationType.Info, $"Your stock command for '{stockCode}' has been received. Please wait for the quote.");
-
-            var stockMessage = new StockChatQueueMessage
-            {
-                UserId = userId.ToString(),
-                ChatId = chatId.ToString(),
-                StockCode = stockCode
-            };
-
-            try
-            {
-                await _publisher.PublishAsync(stockMessage);
-            }
-            catch (Exception ex)
-            {
-                await Clients.Caller.SendAsync(HubMessageType.Notification.ToString(), NotificationType.Error, "Failed to process stock command.");
-                Console.WriteLine($"Error publishing to RabbitMQ: {ex.Message}");
-            }
-
+            await ProcessStockComand(chatId, messageText, userId);
             return;
         }
 
@@ -119,6 +94,35 @@ public class ChatHub : Hub
                         userResult.Value.FullName,
                         addMessageResult.Value.Text,
                         addMessageResult.Value.CreatedAt);
+    }
+
+    private async Task ProcessStockComand(Guid chatId, string messageText, Guid userId)
+    {
+        var stockCode = messageText.Split('=')[1]?.Trim();
+        if (string.IsNullOrEmpty(stockCode))
+        {
+            await Clients.Caller.SendAsync(HubMessageType.Notification.ToString(), NotificationType.Error, "Invalid stock command format. Use /stock=STOCK_CODE.");
+            return;
+        }
+
+        await Clients.Caller.SendAsync(HubMessageType.Notification.ToString(), NotificationType.Info, $"Your stock command for '{stockCode}' has been received. Please wait for the quote.");
+
+        var stockMessage = new StockChatQueueMessage
+        {
+            UserId = userId.ToString(),
+            ChatId = chatId.ToString(),
+            StockCode = stockCode
+        };
+
+        try
+        {
+            await _publisher.PublishAsync(stockMessage);
+        }
+        catch (Exception ex)
+        {
+            await Clients.Caller.SendAsync(HubMessageType.Notification.ToString(), NotificationType.Error, "Failed to process stock command.");
+            Console.WriteLine($"Error publishing to RabbitMQ: {ex.Message}");
+        }
     }
 
     [AllowAnonymous]
