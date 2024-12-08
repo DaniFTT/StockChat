@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "StockChat.Bot": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
