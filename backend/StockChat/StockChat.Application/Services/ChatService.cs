@@ -65,7 +65,7 @@ public class ChatService : IChatService
     {
         var messages = await _chatMessageRepository.GetLastMessagesAsync(chatId, count);
 
-        return Result.Success(messages);
+        return Result.Success(messages.OrderBy(m => m.CreatedAt).AsEnumerable());
     }
 }
 

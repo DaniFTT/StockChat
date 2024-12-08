@@ -18,7 +18,7 @@ public class ChatsController : ControllerBase
     public async Task<IActionResult> GetChats()
     {
         var chats = await _chatService.GetAllChatsAsync();
-        return Ok(chats.Value);
+        return Ok(chats.Value.OrderByDescending(c => c.CreatedAt));
     }
 }
 

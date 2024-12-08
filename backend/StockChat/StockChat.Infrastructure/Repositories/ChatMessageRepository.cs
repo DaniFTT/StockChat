@@ -20,7 +20,7 @@ public class ChatMessageRepository : BaseRepository<ChatMessage>, IChatMessageRe
         return await _dbSet
             .Include(u => u.User)
             .Where(m => m.ChatId == chatId)
-            .OrderBy(m => m.CreatedAt)
+            .OrderByDescending(m => m.CreatedAt)
             .Take(count)
             .ToListAsync();
     }
