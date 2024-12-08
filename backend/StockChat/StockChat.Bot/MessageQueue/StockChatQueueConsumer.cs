@@ -89,12 +89,15 @@ public class StockChatQueueConsumer : IConsumer<StockChatQueueMessage>
             {
                 var data = lines[1].Split(',');
                 var price = data[3];
+                if (price is "N/D")
+                    return $"Invalid stock code: {stockCode.ToUpper()}";
+
                 return $"{stockCode.ToUpper()} quote is ${price} per share.";
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error fetching stock data: {ex.Message}");
+            _logger.LogError($"Error fetching stock data for: {stockCode.ToUpper()}");
         }
 
         return null;
