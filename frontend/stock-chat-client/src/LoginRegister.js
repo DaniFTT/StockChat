@@ -4,12 +4,10 @@ import { Box, Tabs, Tab, TextField, Button, Paper, Typography } from '@mui/mater
 export default function LoginRegister({ onLoginSuccess, setErrors }) {
     const [tab, setTab] = useState(0);
 
-    // Estados do registro
     const [fullName, setFullName] = useState('');
     const [regEmail, setRegEmail] = useState('');
     const [regPassword, setRegPassword] = useState('');
 
-    // Estados do login
     const [logEmail, setLogEmail] = useState('');
     const [logPassword, setLogPassword] = useState('');
 

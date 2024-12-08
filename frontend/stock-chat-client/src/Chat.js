@@ -61,7 +61,7 @@ const Chat = ({ user, onLogout }) => {
                     setChats((prevChats) => {
                         const chatExists = prevChats.some((c) => c.id === chat.id);
                         if (!chatExists) {
-                            return [...prevChats, chat];
+                            return [chat, ...prevChats];
                         }
                         return prevChats;
                     });
@@ -95,16 +95,19 @@ const Chat = ({ user, onLogout }) => {
         if (!connection || !selectedChat) return;
 
         const handleNewMessage = (userType, userName, text, createdAt) => {
-            console.log('NewMessage received:', { userType, userName, text, createdAt });
-            setMessages((prevMessages) => [
-                ...prevMessages,
-                { userType, user: { fullName: userName }, text, createdAt },
-            ]);
+            setMessages((prevMessages) => {
+                const updatedMessages = [...prevMessages, { userType, user: { fullName: userName }, text, createdAt }];
+
+                if (updatedMessages.length > 50) {
+                    return updatedMessages.slice(updatedMessages.length - 50);
+                }
+
+                return updatedMessages;
+            });
         };
 
         const handleGetLastMessages = (lastMessages) => {
-            console.log('LastMessages received:', lastMessages);
-            setMessages(lastMessages);
+            setMessages(lastMessages.slice(Math.max(lastMessages.length - 50, 0)));
         };
 
         connection.on('NewMessage', handleNewMessage);
@@ -244,7 +247,6 @@ const Chat = ({ user, onLogout }) => {
                     </Button>
                 </Box>
 
-                {/* Chat List */}
                 <List sx={{ width: '100%', overflowY: 'auto', flexGrow: 1 }}>
                     {chats.map((chat) => (
                         <ListItem key={chat.id} button={true} onClick={() => handleChatClick(chat)} selected={selectedChat && chat.id === selectedChat.id}>
@@ -257,7 +259,7 @@ const Chat = ({ user, onLogout }) => {
             <Box sx={{ flexGrow: 1, p: 4, display: 'flex', flexDirection: 'column', height: '90vh' }}>
                 {selectedChat ? (
                     <>
-                        <Typography variant="h4" sx={{ mb: 2 }}>Chat: {selectedChat.chatName}</Typography>
+                        <Typography variant="h4" sx={{ mb: 2 }}>{selectedChat.chatName}</Typography>
 
                         <Box
                             sx={{
@@ -278,7 +280,10 @@ const Chat = ({ user, onLogout }) => {
                                         <strong>{message.userType === 1 ? 'Admin' : (message.userType === 2 ? 'StockBot' : `${message.user.fullName}`)}</strong>: {message.text}
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary">
-                                        {message.createdAt}
+                                        {new Date(message.createdAt).toLocaleString(undefined, {
+                                            dateStyle: 'short',
+                                            timeStyle: 'medium',
+                                        })}
                                     </Typography>
                                 </Box>
                             ))}
@@ -308,7 +313,6 @@ const Chat = ({ user, onLogout }) => {
                 )}
             </Box>
 
-            {/* Add Chat Dialog */}
             <Dialog open={isModalOpen} onClose={handleCloseModal}>
                 <DialogTitle>Create New Chat</DialogTitle>
                 <DialogContent>
