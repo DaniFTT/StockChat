@@ -59,7 +59,6 @@ public class ChatHub : Hub
                        addMessageResult.Value.CreatedAt);
     }
 
-
     [Authorize]
     public async Task JoinChat(Guid newChatId, Guid? currentChatId = null)
     {
