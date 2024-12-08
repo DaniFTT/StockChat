@@ -12,6 +12,8 @@ import {
     DialogContent,
     DialogActions,
     TextField,
+    Snackbar,
+    Alert,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { HubConnectionBuilder } from '@microsoft/signalr';
@@ -25,6 +27,9 @@ const Chat = ({ user, onLogout }) => {
 
     const [messageText, setMessageText] = useState('');
     const [messages, setMessages] = useState([]);
+
+    const [notification, setNotification] = useState({ type: '', message: '' });
+    const [showSnackbar, setShowSnackbar] = useState(false);
 
     const navigate = useNavigate();
 
@@ -66,8 +71,9 @@ const Chat = ({ user, onLogout }) => {
                     }
                 });
 
-                newConnection.on('Notification', (message) => {
-                    console.log('Notification:', message);
+                newConnection.on('Notification', (type, message) => {
+                    setNotification({ type, message });
+                    setShowSnackbar(true);
                 });
 
                 setConnection(newConnection);
@@ -175,15 +181,29 @@ const Chat = ({ user, onLogout }) => {
     };
 
     const handleChatClick = async (chat) => {
+        let currentChat = selectedChat;
         setSelectedChat(chat);
         setMessages([]);
         if (connection) {
             try {
-                await connection.invoke('JoinChat', chat.id);
+                await connection.invoke('JoinChat', chat.id, currentChat?.id);
                 await connection.invoke('GetLastMessages', chat.id);
             } catch (err) {
                 console.error('Error joining or fetching messages:', err);
             }
+        }
+    };
+
+    const getSeverity = (type) => {
+        switch (type) {
+            case 0:
+                return 'success';
+            case 1:
+                return 'error';
+            case 2:
+                return 'info';
+            default:
+                return 'info';
         }
     };
 
@@ -237,10 +257,8 @@ const Chat = ({ user, onLogout }) => {
             <Box sx={{ flexGrow: 1, p: 4, display: 'flex', flexDirection: 'column', height: '90vh' }}>
                 {selectedChat ? (
                     <>
-                        {/* Header do Chat */}
                         <Typography variant="h4" sx={{ mb: 2 }}>Chat: {selectedChat.chatName}</Typography>
 
-                        {/* Área de Mensagens */}
                         <Box
                             sx={{
                                 flexGrow: 1,
@@ -257,7 +275,7 @@ const Chat = ({ user, onLogout }) => {
                             {messages?.map((message, index) => (
                                 <Box key={index} sx={{ mb: 1 }}>
                                     <Typography variant="body2" color={message.userType === 'Admin' ? 'error' : 'primary'}>
-                                        <strong>{message.userType === 1 ? 'Admin' : `${message.user.fullName}`}</strong>: {message.text}
+                                        <strong>{message.userType === 1 ? 'Admin' : (message.userType === 2 ? 'StockBot' : `${message.user.fullName}`)}</strong>: {message.text}
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary">
                                         {message.createdAt}
@@ -266,7 +284,6 @@ const Chat = ({ user, onLogout }) => {
                             ))}
                         </Box>
 
-                        {/* Campo de Entrada */}
                         <Box sx={{ display: 'flex', gap: 2 }}>
                             <TextField
                                 fullWidth
@@ -310,6 +327,21 @@ const Chat = ({ user, onLogout }) => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            <Snackbar
+                open={showSnackbar}
+                autoHideDuration={6000}
+                onClose={() => setShowSnackbar(false)}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert
+                    onClose={() => setShowSnackbar(false)}
+                    severity={getSeverity(notification.type)}
+                    sx={{ width: '100%' }}
+                >
+                    {notification.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };
