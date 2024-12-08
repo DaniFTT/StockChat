@@ -4,8 +4,21 @@
       "commandName": "DockerCompose",
       "commandVersion": "1.0",
       "serviceActions": {
-        "stockchat.api": "StartDebugging"
+        "stockchat.api": "StartDebugging",
+        "stockchat.bot": "StartDebugging"
+
       }
+    }
+  },
+  "stockchat.bot": {
+    "commandName": "Project",
+    "dotnetRunMessages": true,
+    "environmentVariables": {
+      "DOTNET_USE_POLLING_FILE_WATCHER": "1",
+      "RabbitMq__Uri": "rabbitmq://localhost:5672",
+      "RabbitMq__Username": "guest",
+      "RabbitMq__Password": "guest",
+      "RabbitMq__QueueName": "stockchat:bot"
     }
   }
 }

@@ -3,7 +3,7 @@ version: '3.4'
 services:
   stockchat.api:
     container_name: stockchat_api
-    image: ${DOCKER_REGISTRY-}stockchatapi
+    image: stockchatapi
     build:
       context: .
       dockerfile: StockChat.API/Dockerfile
@@ -13,10 +13,11 @@ services:
       - ASPNETCORE_URLS=https://+:8081;http://+:8080
     depends_on:
       - sqlserver
+      - rabbitmq
     ports:
       - "8080:8080"
       - "8081:8081"
-  
+
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: stockchat_sql
@@ -26,3 +27,27 @@ services:
       MSSQL_PID: "Express"
     ports:
       - "1433:1433"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: stockchat_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672" # RabbitMQ messaging port
+      - "15672:15672" # RabbitMQ management UI
+
+  stockchat.bot:
+    container_name: stockchat_bot
+    image: stockchatbot
+    build:
+      context: .
+      dockerfile: StockChat.Bot/Dockerfile
+    environment:
+      - RabbitMq__Uri=rabbitmq://rabbitmq:5672
+      - RabbitMq__Username=guest
+      - RabbitMq__Password=guest
+      - RabbitMq__QueueName=stockchat:bot
+    depends_on:
+      - rabbitmq
