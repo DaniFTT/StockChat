@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using StockChat.Bot.MessageQueue;
 using StockChat.Domain.Contracts.Services;
+using StockChat.Domain.Entities;
 using StockChat.Domain.Enums;
 
 public class StockChatQueueConsumer : IConsumer<StockChatQueueMessage>
@@ -36,19 +37,25 @@ public class StockChatQueueConsumer : IConsumer<StockChatQueueMessage>
 
     public async Task Consume(ConsumeContext<StockChatQueueMessage> context)
     {
+        var stockMessage = context.Message;
+        var userId = Guid.Parse(stockMessage.UserId);
+        var chatId = Guid.Parse(stockMessage.ChatId);
+
         try
         {
-            var stockMessage = context.Message;
-
             var stockPriceMessage = await FetchStockPrice(stockMessage.StockCode);
             if (string.IsNullOrEmpty(stockPriceMessage))
             {
                 _logger.LogWarning($"Failed to fetch stock data for {stockMessage.StockCode}");
+                await _hubConnection.InvokeAsync(
+                    "SendStockBotMessage",
+                    chatId,
+                    userId,
+                    $"Failed to fetch stock data for {stockMessage.StockCode}"
+                );
+
                 return;
             }
-
-            var userId = Guid.Parse(stockMessage.UserId);
-            var chatId = Guid.Parse(stockMessage.ChatId);
 
             await _hubConnection.InvokeAsync(
                 "SendStockBotMessage",
@@ -60,6 +67,12 @@ public class StockChatQueueConsumer : IConsumer<StockChatQueueMessage>
         catch (Exception e)
         {
             _logger.LogError(e, e.Message);
+            await _hubConnection.InvokeAsync(
+                "SendStockBotMessage",
+                chatId,
+                userId,
+                $"Failed to fetch stock data for {stockMessage.StockCode}"
+            );
         }
     }
 
