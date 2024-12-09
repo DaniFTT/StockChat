@@ -10,7 +10,10 @@ services:
     environment:
       - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=StockChat;User Id=sa;Password=OuHiDnGB3A4P8Vj;TrustServerCertificate=True;
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=https://+:8081;http://+:8080
+      - ASPNETCORE_URLS=https://+:8081;http://+:8080       
+      - RabbitMq__Uri=rabbitmq://rabbitmq:5672
+      - RabbitMq__Username=guest
+      - RabbitMq__Password=guest
     depends_on:
       - sqlserver
       - rabbitmq
@@ -49,6 +52,7 @@ services:
       - RabbitMq__Username=guest
       - RabbitMq__Password=guest
       - RabbitMq__QueueName=stockchat:bot
+      - SignalR__ChatHubUrl=https://host.docker.internal:8081/chat
     depends_on:
       - rabbitmq
 
