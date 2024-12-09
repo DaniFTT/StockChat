@@ -3,6 +3,8 @@
 ## Context:
 Welcome to the StockChat application! This document explains the steps to set up and run the application, but dont worry, you will se that is very simple! 
 
+Here is the YouTube video of the project presentation (the video is unlisted and only accessible via the link): https://youtu.be/8-BBXSP9Fxg
+
 ## Pre-requisites
 
 ### Mandatory
